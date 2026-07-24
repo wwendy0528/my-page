@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实习生培训 - 学员端</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-dark: #1557b0;
+            --success: #0d9488;
+            --danger: #dc2626;
+            --bg: #f0f4f8;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,.08);
+            --radius: 12px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow);
+        }
+        .navbar-brand {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex; align-items: center; gap: 4px;
+        }
+        .navbar-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-weight: 500;
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        .navbar-badge.online {
+            background: #dcfce7; color: #166534;
+        }
+
+        .student-page {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 16px;
+        }
+        .student-card {
+            background: #fff;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 40px;
+            width: 100%;
+            max-width: 560px;
+        }
+        .student-card h2 {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+        .student-card .subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+        .form-group label .required { color: var(--danger); margin-left: 2px; }
+
+        .form-select, .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            color: var(--text);
+            background: #fff;
+            transition: var(--transition);
+            outline: none;
+            font-family: inherit;
+        }
+        .form-select:focus, .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(26,115,232,.1);
+        }
+        .form-select:disabled, .form-input:disabled {
+            background: #f8fafc; color: #94a3b8; cursor: not-allowed;
+        }
+
+        .score-preview {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            border: 2px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 16px 20px;
+            text-align: center;
+            margin: 24px 0;
+            display: none;
+        }
+        .score-preview.show { display: block; }
+        .score-preview .score-label { font-size: 13px; color: #64748b; }
+        .score-preview .score-value { font-size: 36px; font-weight: 800; color: var(--primary); }
+        .score-preview .score-desc { font-size: 13px; color: #64748b; margin-top: 4px; }
+        .score-preview.negative { background: linear-gradient(135deg, #fef2f2, #fee2e2); border-color: #fecaca; }
+        .score-preview.negative .score-value { color: var(--danger); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: var(--primary); color: #fff; width: 100%;
+        }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+        .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+
+        .toast {
+            position: fixed;
+            top: 24px; right: 24px;
+            padding: 14px 24px;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 600;
+            font-size: 14px;
+            z-index: 9999;
+            animation: slideIn .3s ease;
+            box-shadow: var(--shadow-lg);
+        }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .recent-records {
+            margin-top: 24px;
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+        }
+        .recent-records h4 { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
+        .record-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        .record-item .score-badge {
+            font-weight: 700;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        .score-badge.pos { background: #dcfce7; color: #166534; }
+        .score-badge.neg { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-brand">⭐ 实习生培训 · 积分申报 <span class="navbar-badge" id="navbar-badge" style="margin-left:8px;">💻 本地存储</span></div>
+</nav>
+
+<div class="student-page">
+    <div class="student-card">
+        <h2>📋 积分申报表</h2>
+        <p class="subtitle">请填写以下信息，系统将自动匹配对应积分</p>
+
+        <div class="form-group">
+            <label>组别 <span class="required">*</span></label>
+            <select class="form-select" id="f-group">
+                <option value="">请选择组别</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>姓名 <span class="required">*</span></label>
+            <input type="text" class="form-input" id="f-name" placeholder="请输入你的姓名" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+            <label>类型 <span class="required">*</span></label>
+            <select class="form-select" id="f-type">
+                <option value="">请选择类型</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>具体事件 <span class="required">*</span></label>
+            <select class="form-select" id="f-event" disabled>
+                <option value="">请先选择类型</option>
+            </select>
+        </div>
+
+        <div class="score-preview" id="score-preview">
+            <div class="score-label">本次积分</div>
+            <div class="score-value" id="score-value">0</div>
+            <div class="score-desc" id="score-desc"></div>
+        </div>
+
+        <button class="btn btn-primary" id="btn-submit" disabled>确认提交</button>
+
+        <div class="recent-records" id="recent-records" style="display:none;">
+            <h4>📝 你最近的提交记录</h4>
+            <div id="recent-list"></div>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ==================== Supabase Config ====================
+// ★ 请在这里填你的 Supabase 项目信息，填入后自动启用云端同步
+var SUPABASE_URL = 'https://pyzyhjgrpjlwpssorqiu.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5enloamdycGpsd3Bzc29ycWl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MDkxNDYsImV4cCI6MjEwMDM4NTE0Nn0.9CoKNjeCWgvPuHdeB5l6ywAWHDEWbRjebWU98O3q3Ns';
+
+// ==================== Scoring Rules ====================
+var SCORE_RULES = {
+    '课堂纪律': [
+        { event: '请假', desc: '事假＆病假', score: -2 },
+        { event: '迟到', desc: '迟到＆早退', score: -1 },
+        { event: '无故缺勤', desc: '无故缺勤', score: -3 }
+    ],
+    '课堂互动': [
+        { event: '课堂发言', desc: '课堂发言', score: 2 }
+    ],
+    '担任职位': [
+        { event: '担任组长', desc: '担任组长：负责统筹小组内部事务，推进各项任务开展', score: 5 }
+    ],
+    '破冰游戏': [
+        { event: '上台代表', desc: '代表上台讲故事，且其他组猜错', score: 3 },
+        { event: '上台组员', desc: '上台组其余成员，且其他组猜错', score: 2 },
+        { event: '猜对组长', desc: '猜对其他组故事，该组组长', score: 3 },
+        { event: '猜对组员', desc: '猜对其他组故事，该组组员', score: 2 }
+    ]
+};
+var GROUPS = ['第1组','第2组','第3组','第4组','第5组','第6组','第7组','第8组'];
+var STORAGE_KEY = 'intern_score_records';
+var NAME_CACHE_KEY = 'intern_name_cache';
+
+// ==================== DB: Cloud (Supabase) + Local fallback ====================
+var db = { configured: false, sb: null };
+function initDB() {
+    if (SUPABASE_URL && SUPABASE_KEY && window.supabase) {
+        try {
+            db.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            db.configured = true;
+            document.getElementById('navbar-badge').textContent = '☁ 云端同步';
+            document.getElementById('navbar-badge').className = 'navbar-badge online';
+        } catch(e) { console.warn('Supabase init failed, using local storage'); }
+    }
+}
+async function dbGetRecords() {
+    if (!db.configured) {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { return []; }
+    }
+    var all = [];
+    var from = 0, limit = 1000;
+    while (true) {
+        var res = await db.sb.from('score_records').select('*', { count: 'exact' }).range(from, from + limit - 1).order('created_at', { ascending: true });
+        if (res.error) throw res.error;
+        if (!res.data || res.data.length === 0) break;
+        all = all.concat(res.data.map(mapRow));
+        if (res.data.length < limit) break;
+        from += limit;
+    }
+    return all;
+}
+async function dbAddRecord(rec) {
+    rec.time = new Date().toLocaleString('zh-CN');
+    rec.source = '学员';
+    if (!db.configured) {
+        var records; try { records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { records = []; }
+        rec.id = Date.now().toString(36) + Math.random().toString(36).substr(2,5);
+        records.push(rec); localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); return { data: [rec], error: null };
+    }
+    return await db.sb.from('score_records').insert([{
+        student_group: rec.group, name: rec.name, type: rec.type, event: rec.event,
+        score: rec.score, time: rec.time, source: '学员'
+    }]);
+}
+async function dbGetNames() {
+    if (!db.configured) {
+        try { return JSON.parse(localStorage.getItem(NAME_CACHE_KEY) || '{}'); } catch(e) { return {}; }
+    }
+    var cache = {};
+    var res = await db.sb.from('score_records').select('student_group, name');
+    if (res.error) return cache;
+    (res.data || []).forEach(function(r) {
+        if (!cache[r.student_group]) cache[r.student_group] = [];
+        if (cache[r.student_group].indexOf(r.name) === -1) cache[r.student_group].push(r.name);
+    });
+    return cache;
+}
+function mapRow(r) {
+    return { id: r.id, group: r.student_group, name: r.name, type: r.type, event: r.event, score: r.score, time: r.time, source: r.source || '学员' };
+}
+
+// ==================== Toast ====================
+function showToast(msg, type) {
+    var c = document.getElementById('toast-container');
+    var t = document.createElement('div');
+    t.className = 'toast ' + (type || 'success'); t.textContent = msg; c.appendChild(t);
+    setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .3s'; }, 2500);
+    setTimeout(function(){ t.remove(); }, 2800);
+}
+
+// ==================== Form Logic ====================
+function initForm() {
+    initDB();
+    var gs = document.getElementById('f-group');
+    GROUPS.forEach(function(g) { var o = document.createElement('option'); o.value = g; o.textContent = g; gs.appendChild(o); });
+    var ts = document.getElementById('f-type');
+    Object.keys(SCORE_RULES).forEach(function(t) { var o = document.createElement('option'); o.value = t; o.textContent = t; ts.appendChild(o); });
+
+    document.getElementById('f-type').addEventListener('change', onTypeChange);
+    document.getElementById('f-event').addEventListener('change', onEventChange);
+    document.getElementById('btn-submit').addEventListener('click', onSubmit);
+    document.getElementById('f-group').addEventListener('change', validateForm);
+    document.getElementById('f-name').addEventListener('input', validateForm);
+
+    document.getElementById('f-name').addEventListener('focus', function() {
+        if (this.value) return;
+        dbGetNames().then(function(cache) {
+            var allNames = {};
+            Object.values(cache).forEach(function(arr) { arr.forEach(function(n) { allNames[n] = 1; }); });
+            var keys = Object.keys(allNames);
+            if (keys.length === 0) return;
+            var dl = document.getElementById('name-suggestions');
+            if (!dl) { dl = document.createElement('datalist'); dl.id = 'name-suggestions'; document.body.appendChild(dl); }
+            dl.innerHTML = '';
+            keys.forEach(function(n) { var o = document.createElement('option'); o.value = n; dl.appendChild(o); });
+            document.getElementById('f-name').setAttribute('list', 'name-suggestions');
+        });
+    });
+}
+
+function onTypeChange() {
+    var type = document.getElementById('f-type').value;
+    var es = document.getElementById('f-event');
+    es.innerHTML = '<option value="">请选择具体事件</option>';
+    document.getElementById('score-preview').classList.remove('show','negative');
+    document.getElementById('btn-submit').disabled = true;
+    if (type && SCORE_RULES[type]) {
+        es.disabled = false;
+        SCORE_RULES[type].forEach(function(r) {
+            var o = document.createElement('option');
+            o.value = r.event;
+            o.textContent = r.event + ' (' + (r.score>0?'+':'') + r.score + '分)';
+            o.dataset.score = r.score;
+            o.dataset.desc = r.desc;
+            es.appendChild(o);
+        });
+    } else { es.disabled = true; }
+}
+
+function onEventChange() {
+    var sel = document.getElementById('f-event').selectedOptions[0];
+    var pv = document.getElementById('score-preview');
+    if (sel && sel.dataset.score) {
+        var s = parseInt(sel.dataset.score);
+        document.getElementById('score-value').textContent = (s>0?'+':'') + s;
+        document.getElementById('score-desc').textContent = sel.dataset.desc;
+        pv.classList.add('show');
+        if (s < 0) pv.classList.add('negative'); else pv.classList.remove('negative');
+    } else { pv.classList.remove('show','negative'); }
+    validateForm();
+}
+
+function validateForm() {
+    document.getElementById('btn-submit').disabled = !(
+        document.getElementById('f-group').value &&
+        document.getElementById('f-name').value.trim() &&
+        document.getElementById('f-type').value &&
+        document.getElementById('f-event').value
+    );
+}
+
+async function onSubmit() {
+    var group = document.getElementById('f-group').value;
+    var name = document.getElementById('f-name').value.trim();
+    var type = document.getElementById('f-type').value;
+    var ev = document.getElementById('f-event');
+    var eventVal = ev.value;
+    var sel = ev.selectedOptions[0];
+    var score = parseInt(sel.dataset.score);
+    var btn = document.getElementById('btn-submit');
+    btn.disabled = true; btn.textContent = '提交中...';
+
+    try {
+        var res = await dbAddRecord({ group: group, name: name, type: type, event: eventVal, score: score });
+        if (res.error) { showToast('提交失败：' + res.error.message, 'error'); btn.disabled = false; btn.textContent = '确认提交'; return; }
+        var emoji = score >= 0 ? '🎉' : '📝';
+        showToast(emoji + ' ' + name + ' ' + eventVal + ' (' + (score>0?'+':'') + score + '分) 提交成功！');
+        await renderRecentRecords(name);
+        // Reset
+        ev.innerHTML = '<option value="">请先选择类型</option>'; ev.disabled = true;
+        document.getElementById('f-type').value = '';
+        document.getElementById('score-preview').classList.remove('show','negative');
+        btn.textContent = '确认提交';
+    } catch(e) {
+        showToast('网络错误：' + e.message, 'error');
+        btn.disabled = false; btn.textContent = '确认提交';
+    }
+}
+
+async function renderRecentRecords(name) {
+    var container = document.getElementById('recent-records');
+    var list = document.getElementById('recent-list');
+    try {
+        var records = await dbGetRecords();
+        var mine = records.filter(function(r) { return r.name === name; }).slice(-5).reverse();
+        if (mine.length === 0) { container.style.display = 'none'; return; }
+        container.style.display = 'block';
+        list.innerHTML = mine.map(function(r) {
+            return '<div class="record-item"><span>' + r.time + ' | ' + r.type + ' · ' + r.event +
+                   '</span><span class="score-badge ' + (r.score>=0?'pos':'neg') + '">' + (r.score>0?'+':'') + r.score + '分</span></div>';
+        }).join('');
+    } catch(e) { container.style.display = 'none'; }
+}
+
+// ==================== Init ====================
+document.addEventListener('DOMContentLoaded', initForm);
+</script>
+</body>
+</html>
